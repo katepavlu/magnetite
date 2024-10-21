@@ -1,26 +1,26 @@
 /// We derive Deserialize/Serialize so we can persist app state on shutdown.
-#[derive(serde::Deserialize, serde::Serialize)]
+#[derive(serde::Deserialize, serde::Serialize,PartialEq)]
 #[serde(default)] // if we add new fields, give them default values when deserializing old state
-pub struct TemplateApp {
+pub struct MagnetiteGUI {
     // Example stuff:
-    label: String,
-
     // this how you opt-out of serialization of a member
-    #[serde(skip)]
-    value: f32,
+    res: f64,
+    last_plot_min: [f64; 2],
+    last_plot_max: [f64; 2],
 }
 
-impl Default for TemplateApp {
+impl Default for MagnetiteGUI {
     fn default() -> Self {
         Self {
             // Example stuff:
-            label: "Hello World!".to_owned(),
-            value: 2.7,
+            res: 10.0,
+            last_plot_min: [0.0, 0.0],
+            last_plot_max: [10.0, 10.0],
         }
     }
 }
 
-impl TemplateApp {
+impl MagnetiteGUI {
     /// Called once before the first frame.
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
         // This is also where you can customized the look at feel of egui using
@@ -36,7 +36,10 @@ impl TemplateApp {
     }
 }
 
-impl eframe::App for TemplateApp {
+use egui::plot::{Arrows, PlotPoints, Plot};
+use egui::*;
+
+impl eframe::App for MagnetiteGUI {
     /// Called by the frame work to save state before shutdown.
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, eframe::APP_KEY, self);
@@ -45,7 +48,8 @@ impl eframe::App for TemplateApp {
     /// Called each time the UI needs repainting, which may be many times per second.
     /// Put your widgets into a `SidePanel`, `TopPanel`, `CentralPanel`, `Window` or `Area`.
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let Self { label, value } = self;
+        let Self { res, last_plot_max, last_plot_min } = self;
+
 
         // Examples of how to create different panels and windows.
         // Pick whichever suits you.
@@ -68,12 +72,12 @@ impl eframe::App for TemplateApp {
         });
 
         egui::SidePanel::left("side_panel").show(ctx, |ui| {
-            ui.heading("Add points");
+            
+            ui.heading("Settings");
 
-            ui.add(egui::Slider::new(value, 0.0..=10.0).text("value"));
-            if ui.button("Increment").clicked() {
-                *value += 1.0;
-            }
+            ui.add(egui::Slider::new(res, 10.0..=100.0)
+                   .logarithmic(true)
+                   .text("Plot Resolution"));
 
             ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
                 ui.horizontal(|ui| {
@@ -93,13 +97,42 @@ impl eframe::App for TemplateApp {
         egui::CentralPanel::default().show(ctx, |ui| {
             // The central panel the region left after adding TopPanel's and SidePanel's
 
-            ui.heading("eframe template");
-            ui.hyperlink("https://github.com/emilk/eframe_template");
-            ui.add(egui::github_link_file!(
-                "https://github.com/emilk/eframe_template/blob/master/",
-                "Source code."
-            ));
-            egui::warn_if_debug_build(ui);
+            ui.heading("Plot");
+            let pnt_cnt = res.powi(2);
+
+            let plot = Plot::new("items_demo").data_aspect(1.0);
+
+
+            let eval_points = PlotPoints::from_parametric_callback(
+                    |t| (t%*res+last_plot_min[0], (t - t%*res) / *res + last_plot_min[1] ),
+                    0.0..pnt_cnt,
+                    pnt_cnt as usize,
+                );
+
+            let arrow_tips = PlotPoints::from_parametric_callback(
+                    |t| (t%*res + 0.5+last_plot_min[0], (t - t%*res) / *res + 0.5 +last_plot_min[1]),
+                    0.0..pnt_cnt,
+                    pnt_cnt as usize,
+                );
+
+            let arrows = {
+                Arrows::new(eval_points, arrow_tips)
+            };
+            
+            let InnerResponse {
+                response,
+                inner: (bounds,_),
+            } = plot.show(ui, |plot_ui| {(
+                plot_ui.plot_bounds(),
+                plot_ui.arrows(arrows),
+            )});
+
+            *last_plot_min = bounds.min();
+            *last_plot_max = bounds.max();
+
+            ui.with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
+                egui::warn_if_debug_build(ui);
+            });
         });
     }
 }

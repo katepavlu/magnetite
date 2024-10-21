@@ -10,6 +10,6 @@ fn main() {
     eframe::run_native(
         "magnetite",
         native_options,
-        Box::new(|cc| Box::new(magnetite::TemplateApp::new(cc))),
+        Box::new(|cc| Box::new(magnetite::MagnetiteGUI::new(cc))),
     );
 }

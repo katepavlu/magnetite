@@ -1,7 +1,7 @@
 #![warn(clippy::all, rust_2018_idioms)]
 
-use std::f64::consts;
 use std::ops::{Add, AddAssign};
+use std::f64::consts::PI;
 // magnetic field simulator / visualiser
 
 // used to specify location
@@ -116,7 +116,7 @@ impl Field {
 }
 
 mod app;
-pub use app::TemplateApp;
+pub use app::MagnetiteGUI;
 
 #[cfg(test)]
 mod tests {
@@ -130,7 +130,7 @@ mod tests {
             );
         assert!(comp_vectors(
             &Vector{x: 6.0_f64.sqrt()/4.0, y:6.0_f64.sqrt()/4.0, z:0.5},
-            &Vector::from_polar(1.0, consts::PI/4.0 , consts::PI/6.0))
+            &Vector::from_polar(1.0, PI/4.0 , PI/6.0))
             );
     }
 
@@ -166,7 +166,7 @@ mod tests {
             len: 1000.0,
             };
         // calculate by infinite wire approximaton
-        let v1 = Vector::new(0.0, 0.0, 4.0 * consts::PI * 1e-7 / (2.0 * consts::PI));
+        let v1 = Vector::new(0.0, 0.0, 4.0 * PI * 1e-7 / (2.0 * PI));
         // calculate by Biot-Savart
         let v2 = sgmt.induced_field(&Location{x:0.0, y:1.0, z:0.0});
         assert!(comp_vectors(&v1, &v2));
